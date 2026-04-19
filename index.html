@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Keboola Orders</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #222; }
+    header { background: #1b6ef3; color: #fff; padding: 1rem 2rem; }
+    header h1 { font-size: 1.25rem; font-weight: 600; }
+    main { padding: 1.5rem 2rem; }
+    .metrics { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .card { background: #fff; border-radius: 8px; padding: 1rem 1.5rem; flex: 1; min-width: 140px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .card .label { font-size: .75rem; color: #666; text-transform: uppercase; letter-spacing: .05em; }
+    .card .value { font-size: 1.75rem; font-weight: 700; margin-top: .25rem; }
+    .toolbar { display: flex; gap: .75rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
+    .toolbar input[type=text] { flex: 1; min-width: 240px; padding: .5rem .75rem;
+      border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; font-family: monospace; }
+    .toolbar button { padding: .5rem 1.25rem; background: #1b6ef3; color: #fff;
+      border: none; border-radius: 6px; cursor: pointer; font-size: .9rem; }
+    .toolbar button:hover { background: #1558c8; }
+    .toolbar button.save { background: #16a34a; }
+    .toolbar button.save:hover { background: #15803d; }
+    .toolbar button:disabled { opacity: .45; cursor: not-allowed; }
+    .toolbar select { padding: .5rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; }
+    .table-wrap { overflow-x: auto; background: #fff; border-radius: 8px;
+                  box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    th { background: #f9f9f9; border-bottom: 2px solid #eee; padding: .6rem 1rem;
+         text-align: left; font-weight: 600; white-space: nowrap; }
+    td { padding: .55rem 1rem; border-bottom: 1px solid #f0f0f0; }
+    td[contenteditable] { outline: none; cursor: text; }
+    td[contenteditable]:focus { background: #fffbeb; box-shadow: inset 0 0 0 2px #f59e0b; }
+    td.edited { background: #fffbeb; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: .15rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+    .badge.completed  { background: #dcfce7; color: #16a34a; }
+    .badge.shipped    { background: #dbeafe; color: #1d4ed8; }
+    .badge.processing { background: #fef9c3; color: #854d0e; }
+    .badge.cancelled  { background: #fee2e2; color: #b91c1c; }
+    #status { color: #666; font-size: .875rem; }
+    #error  { color: #b91c1c; background: #fee2e2; padding: .75rem 1rem; border-radius: 6px;
+              margin-bottom: 1rem; display: none; }
+  </style>
+</head>
+<body>
+  <header><h1>📦 Keboola Orders</h1></header>
+  <main>
+    <div class="metrics">
+      <div class="card"><div class="label">Total rows</div><div class="value" id="m-rows">—</div></div>
+      <div class="card"><div class="label">Total revenue</div><div class="value" id="m-revenue">—</div></div>
+      <div class="card"><div class="label">Avg order</div><div class="value" id="m-avg">—</div></div>
+      <div class="card"><div class="label">Countries</div><div class="value" id="m-countries">—</div></div>
+    </div>
+    <div id="error"></div>
+    <div class="toolbar">
+      <input type="text" id="sql-input" value='SELECT * FROM "in.c-andy-test"."sample_orders"' />
+      <select id="status-filter"><option value="">All statuses</option></select>
+      <button onclick="load()">Run</button>
+      <button id="save-btn" class="save" onclick="save()" disabled>Save changes</button>
+      <span id="status">Loading…</span>
+    </div>
+    <div class="table-wrap"><table id="data-table"><thead></thead><tbody></tbody></table></div>
+  </main>
+
+  <script>
+    let allRows = [], columns = [], editedRows = new Set();
+
+    async function load() {
+      const sql = document.getElementById('sql-input').value;
+      setStatus('Running query…');
+      showError('');
+      try {
+        const res = await fetch('/api/orders?sql=' + encodeURIComponent(sql));
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        columns = data.columns;
+        allRows = data.rows;
+        editedRows.clear();
+        document.getElementById('save-btn').disabled = true;
+        populateFilter();
+        render();
+        setStatus(`${allRows.length} rows loaded`);
+      } catch (e) {
+        showError(e.message);
+        setStatus('');
+      }
+    }
+
+    function populateFilter() {
+      const sel = document.getElementById('status-filter');
+      const current = sel.value;
+      sel.innerHTML = '<option value="">All statuses</option>';
+      if (columns.includes('order_status')) {
+        [...new Set(allRows.map(r => r.order_status))].sort().forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s; opt.textContent = s;
+          if (s === current) opt.selected = true;
+          sel.appendChild(opt);
+        });
+      }
+    }
+
+    function render() {
+      const statusFilter = document.getElementById('status-filter').value;
+      const rows = statusFilter ? allRows.filter(r => r.order_status === statusFilter) : allRows;
+
+      // Metrics
+      document.getElementById('m-rows').textContent = rows.length;
+      const totals = rows.map(r => parseFloat(r.total_amount) || 0);
+      const sum = totals.reduce((a, b) => a + b, 0);
+      document.getElementById('m-revenue').textContent = '$' + sum.toFixed(2);
+      document.getElementById('m-avg').textContent = rows.length ? '$' + (sum / rows.length).toFixed(2) : '—';
+      document.getElementById('m-countries').textContent = new Set(rows.map(r => r.country)).size;
+
+      // Table header
+      const thead = document.querySelector('#data-table thead');
+      thead.innerHTML = '<tr>' + columns.map(c => `<th>${c}</th>`).join('') + '</tr>';
+
+      // Table body
+      const tbody = document.querySelector('#data-table tbody');
+      tbody.innerHTML = '';
+      rows.forEach((row, rowIdx) => {
+        const tr = document.createElement('tr');
+        columns.forEach(col => {
+          const val = row[col] ?? '';
+          const td = document.createElement('td');
+          if (col === 'order_status') {
+            td.innerHTML = `<span class="badge ${val}">${val}</span>`;
+          } else {
+            td.textContent = val;
+            td.contentEditable = 'true';
+            td.addEventListener('blur', () => {
+              row[col] = td.textContent;
+              td.classList.add('edited');
+              editedRows.add(row);
+              document.getElementById('save-btn').disabled = false;
+            });
+          }
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function save() {
+      const sql = document.getElementById('sql-input').value;
+      const match = sql.match(/FROM\s+("([^"]+)"\."([^"]+)")/i);
+      if (!match) return showError('Cannot determine table name from SQL');
+      const fqn = match[1];
+      const pk = columns[0];
+      const escape = v => String(v ?? '').replace(/'/g, "''");
+
+      const statements = [...editedRows].map(row => {
+        const setClauses = columns
+          .filter(c => c !== pk)
+          .map(c => `"${c}" = '${escape(row[c])}'`)
+          .join(', ');
+        return `UPDATE ${fqn} SET ${setClauses} WHERE "${pk}" = '${escape(row[pk])}'`;
+      });
+
+      const saveBtn = document.getElementById('save-btn');
+      saveBtn.disabled = true;
+      setStatus('Saving…');
+      showError('');
+      try {
+        const res = await fetch('/api/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ statements }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        editedRows.clear();
+        document.querySelectorAll('td.edited').forEach(td => td.classList.remove('edited'));
+        setStatus(`Saved ${data.count} row(s)`);
+      } catch (e) {
+        showError(e.message);
+        saveBtn.disabled = false;
+        setStatus('');
+      }
+    }
+
+    function setStatus(msg) { document.getElementById('status').textContent = msg; }
+    function showError(msg) {
+      const el = document.getElementById('error');
+      el.textContent = msg; el.style.display = msg ? 'block' : 'none';
+    }
+
+    document.getElementById('status-filter').addEventListener('change', render);
+    load();
+  </script>
+</body>
+</html>

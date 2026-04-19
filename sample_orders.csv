@@ -1,0 +1,11 @@
+order_id,customer_id,customer_name,email,product_name,category,quantity,unit_price,total_amount,order_status,order_date,country
+ORD-001,CUST-101,Alice Johnson,alice@example.com,Wireless Headphones,Electronics,1,89.99,89.99,completed,2024-01-05,US
+ORD-002,CUST-102,Bob Smith,bob@example.com,Running Shoes,Apparel,2,65.00,130.00,completed,2024-01-08,UK
+ORD-003,CUST-103,Clara Diaz,clara@example.com,Coffee Maker,Kitchen,1,49.99,49.99,shipped,2024-01-10,DE
+ORD-004,CUST-101,Alice Johnson,alice@example.com,Phone Case,Accessories,3,12.50,37.50,completed,2024-01-12,US
+ORD-005,CUST-104,David Lee,david@example.com,Yoga Mat,Sports,1,34.99,34.99,cancelled,2024-01-15,CA
+ORD-006,CUST-105,Eva Novak,eva@example.com,Desk Lamp,Home Office,2,29.99,59.98,completed,2024-01-18,CZ
+ORD-007,CUST-106,Frank Brown,frank@example.com,Bluetooth Speaker,Electronics,1,59.99,59.99,shipped,2024-01-20,US
+ORD-008,CUST-102,Bob Smith,bob@example.com,Water Bottle,Sports,4,18.00,72.00,completed,2024-01-22,UK
+ORD-009,CUST-107,Grace Kim,grace@example.com,Notebook Set,Stationery,2,14.99,29.98,processing,2024-01-25,KR
+ORD-010,CUST-108,Henry White,henry@example.com,Standing Desk,Home Office,1,299.00,299.00,completed,2024-01-28,US

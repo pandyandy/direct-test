@@ -102,4 +102,13 @@ app.post('/api/save', express.json(), async (req, res) => {
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => console.log(`Listening on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Listening on port ${PORT}`);
+  console.log('ENV:', {
+    QUERY_SERVICE_URL,
+    KBC_TOKEN: KBC_TOKEN ? `${KBC_TOKEN.slice(0, 10)}…` : '(not set)',
+    WORKSPACE_ID: WORKSPACE_ID || '(not set)',
+    BRANCH_ID,
+    SQL,
+  });
+});

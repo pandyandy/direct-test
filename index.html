@@ -155,7 +155,7 @@
 
       const statements = [...editedRows].map(row => {
         const setClauses = columns
-          .filter(c => c !== pk)
+          .filter(c => c !== pk && c !== '_timestamp')
           .map(c => `"${c}" = '${escape(row[c])}'`)
           .join(', ');
         return `UPDATE ${fqn} SET ${setClauses} WHERE "${pk}" = '${escape(row[pk])}'`;

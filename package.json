@@ -6,6 +6,7 @@
     "dev": "node --env-file=.env.local server.js"
   },
   "dependencies": {
+    "@keboola/storage-api-js-client-v2": "github:keboola/storage-api-js-client-v2#devin/1776263709-initial-package",
     "express": "^4.19.2"
   }
 }

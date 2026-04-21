@@ -147,19 +147,9 @@
 
     async function save() {
       const sql = document.getElementById('sql-input').value;
-      const match = sql.match(/FROM\s+("([^"]+)"\."([^"]+)")/i);
-      if (!match) return showError('Cannot determine table name from SQL');
-      const fqn = match[1];
-      const pk = columns[0];
-      const escape = v => String(v ?? '').replace(/'/g, "''");
-
-      const statements = [...editedRows].map(row => {
-        const setClauses = columns
-          .filter(c => c !== pk && c !== '_timestamp')
-          .map(c => `"${c}" = '${escape(row[c])}'`)
-          .join(', ');
-        return `UPDATE ${fqn} SET ${setClauses} WHERE "${pk}" = '${escape(row[pk])}'`;
-      });
+      const match = sql.match(/FROM\s+"([^"]+)"\."([^"]+)"/i);
+      if (!match) return showError('Cannot determine table ID from SQL');
+      const tableId = `${match[1]}.${match[2]}`;
 
       const saveBtn = document.getElementById('save-btn');
       saveBtn.disabled = true;
@@ -169,7 +159,7 @@
         const res = await fetch('/api/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ statements }),
+          body: JSON.stringify({ tableId, rows: [...editedRows] }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
